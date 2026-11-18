@@ -36,6 +36,31 @@ jobs:
           DIR=$(dirname "$FILE")
           echo "dir=$DIR" >> "$GITHUB_OUTPUT"
 
+      - name: Set Java 17 targets
+        env:
+          PROJECT_DIR: ${{ steps.project.outputs.dir }}
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+
+          p = Path(os.environ["PROJECT_DIR"]) / "app" / "build.gradle.kts"
+          s = p.read_text()
+
+          if "sourceCompatibility = JavaVersion.VERSION_17" not in s:
+              addition = """
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+          """
+              s = s.replace("android {", "android {\n" + addition, 1)
+              p.write_text(s)
+          PY
+
       - name: Build APK
         run: gradle -p "${{ steps.project.outputs.dir }}" --no-daemon :app:assembleDebug
 
